@@ -1,3 +1,13 @@
+"""
+emotion_dataset.py
+===================
+PyTorch Dataset for RAF-DB / AffectNet / FER2013-style facial expression
+datasets, with optional per-pixel uncertainty weighting fed by pre-computed
+FLAME confidence maps (see src/precompute_uncertainty_maps.py) or an
+on-the-fly face regressor.  Used by src/run_classifier_experiment.py,
+src/downstream_tuning.py, and main.py's downstream stage.
+"""
+
 import warnings
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Tuple

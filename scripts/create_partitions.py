@@ -49,6 +49,9 @@ AVAILABLE_DATASETS = ["now", "coma", "tempeh", "utkface", "lfw"]
 # ---------------------------------------------------------------------------
 
 def _stratum(item: dict) -> str:
+    """Stratification-key for one catalogue item, chosen per source dataset
+    (expression for CoMA, condition for NoW, age-decade x gender for UTKFace,
+    subject for LFW/TEMPEH, source dataset name for mixed partitions)."""
     ds = item.get("dataset", "")
     if ds == "coma":
         return item.get("expression", "unknown")
@@ -133,6 +136,7 @@ def _to_record(item: dict) -> dict:
 
 
 def _save(items: List[dict], path: Path, meta: dict) -> None:
+    """Serialise `items` (as JSON-safe records) and `meta` to `path`."""
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = {"meta": meta, "samples": [_to_record(item) for item in items]}
     with open(path, "w") as f:

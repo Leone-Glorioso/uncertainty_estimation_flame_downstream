@@ -121,6 +121,7 @@ _P2_MODES = ['uncertainty_weighted', 'loss_weighted']
 # ---------------------------------------------------------------------------
 
 def _val_transform():
+    """Deterministic resize + normalise transform used for test/eval splits."""
     import torchvision.transforms as T
     return T.Compose([
         T.Resize((_IMG_SIZE, _IMG_SIZE)),
@@ -130,6 +131,7 @@ def _val_transform():
 
 
 def _train_transform():
+    """Augmented (crop/flip/jitter) + normalise transform used for training splits."""
     import torchvision.transforms as T
     return T.Compose([
         T.RandomResizedCrop(_IMG_SIZE, scale=(0.80, 1.0)),
@@ -167,6 +169,7 @@ def _class_weights_from_subset(subset: Subset) -> torch.Tensor:
 
 
 def _macro_f1(preds: torch.Tensor, labels: torch.Tensor) -> float:
+    """Unweighted mean of per-class F1 scores across the 7 expression classes."""
     f1s = []
     for c in range(_N_CLS):
         tp = float(((preds == c) & (labels == c)).sum())
@@ -179,6 +182,7 @@ def _macro_f1(preds: torch.Tensor, labels: torch.Tensor) -> float:
 
 
 def _per_class_acc(preds: torch.Tensor, labels: torch.Tensor) -> Dict[str, float]:
+    """Per-class accuracy (%) keyed by expression name; NaN for absent classes."""
     acc = {}
     for c, name in enumerate(EXPRESSION_CLASSES):
         mask = labels == c
@@ -864,6 +868,7 @@ def _strip_epoch_logs(obj: Any) -> Any:
 
 
 def _save_results(results: dict, output_dir: str) -> str:
+    """Write results.json (summary block first, then epoch-log-stripped detail)."""
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
     path = str(out / 'results.json')
@@ -890,6 +895,7 @@ def _save_results(results: dict, output_dir: str) -> str:
 
 
 def _print_p1_summary(configs: List[Dict], n: int = 10) -> None:
+    """Print the top-`n` Phase-1 configs ranked by mean accuracy."""
     print(f"  {'Rank':<5} {'Acc':>8} {'Std':>6} {'F1':>7} | Config")
     print("  " + "-" * 70)
     for rank, cfg in enumerate(configs[:n], 1):

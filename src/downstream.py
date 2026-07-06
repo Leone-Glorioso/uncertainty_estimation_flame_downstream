@@ -1,3 +1,22 @@
+"""
+downstream.py
+=============
+Downstream facial expression classifier: projects per-vertex FLAME uncertainty
+into image space and fuses it into a Vision Transformer / ResNet / GCN
+classifier to test whether geometric uncertainty carries task-relevant signal
+for 2D facial expression recognition.
+
+Key building blocks
+--------------------
+  project_variance_to_2d         — weak-perspective splat of (5023, 1) vertex
+                                    uncertainty onto an (H, W) confidence map.
+  UncertaintyWeightedClassifier   — the classifier itself; supports a CNN/ViT
+                                    path (five uncertainty fusion points, see
+                                    the class docstring) and a GCN path that
+                                    operates directly on FLAME vertices.
+  build_flame_adjacency          — normalised graph adjacency for the GCN path.
+"""
+
 import warnings
 import numpy as np
 import torch

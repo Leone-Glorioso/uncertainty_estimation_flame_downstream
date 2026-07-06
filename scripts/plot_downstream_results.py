@@ -181,6 +181,7 @@ def usable_methods(data) -> list[str]:
 
 
 def best_test_acc(records: list[dict]) -> float:
+    """Highest test accuracy reached across all logged epochs."""
     return max(r["test_acc"] for r in records)
 
 
@@ -214,6 +215,7 @@ def stack_series(list_of_record_lists: list[list[dict]], field: str):
 # --------------------------------------------------------------------------
 
 def _style_axes(ax, ylabel: str, title: str):
+    """Apply the shared title/label/grid/spine styling used by every line plot."""
     ax.set_title(title, fontsize=12, fontweight="bold")
     ax.set_xlabel("Epoch")
     ax.set_ylabel(ylabel)
@@ -223,6 +225,8 @@ def _style_axes(ax, ylabel: str, title: str):
 
 
 def _mark_stage_boundary(ax, n_warmup_epochs: float = 3.5):
+    """Draw a dotted vertical line + label where Stage 1 (frozen warm-up) ends
+    and Stage 2 (partial fine-tune) begins on the shared global-epoch axis."""
     ax.axvline(n_warmup_epochs, color=MUTED, linestyle=":", linewidth=1)
     ymin, ymax = ax.get_ylim()
     ax.text(n_warmup_epochs, ymax, " Stage 1→2", fontsize=8, color=MUTED,
@@ -230,6 +234,8 @@ def _mark_stage_boundary(ax, n_warmup_epochs: float = 3.5):
 
 
 def _plot_shaded_line(ax, epochs, arr, label, color, linestyle="-", shade=True):
+    """Plot the per-epoch mean of `arr` (n_series, n_epochs) with an optional
+    min-max shaded band showing the spread across the stacked series."""
     avg = np.nanmean(arr, axis=0)
     ax.plot(epochs, avg, label=label, color=color, linewidth=2, linestyle=linestyle)
     if shade and arr.shape[0] > 1:
@@ -239,6 +245,7 @@ def _plot_shaded_line(ax, epochs, arr, label, color, linestyle="-", shade=True):
 
 
 def _bar_with_err(ax, labels, values, errs, colors):
+    """Bar chart with error bars and a value label printed above each bar."""
     x = np.arange(len(labels))
     bars = ax.bar(x, values, yerr=errs, capsize=4, color=colors,
                    edgecolor="white", linewidth=0.5)
@@ -259,6 +266,8 @@ def _bar_with_err(ax, labels, values, errs, colors):
 # --------------------------------------------------------------------------
 
 def plot_a_bar_overall(data, methods, out_path, title_suffix=""):
+    """(a) Single bar pair: Plain vs. Weighted, each averaged over all `methods`
+    (and, for Weighted, over all five fusion modes)."""
     plain_vals = [best_test_acc(data[m]["plain"]) for m in methods]
     weighted_vals = [best_test_acc(data[m][fm])
                       for m in methods for fm in FUSION_MODES if fm in data[m]]
@@ -276,6 +285,7 @@ def plot_a_bar_overall(data, methods, out_path, title_suffix=""):
 
 
 def plot_b_bar_by_fusion(data, methods, out_path, title_suffix=""):
+    """(b) One bar per fusion mode (plus Plain), each averaged over `methods`."""
     plain_vals = [best_test_acc(data[m]["plain"]) for m in methods]
     labels = ["Plain"] + FUSION_MODES
     colors = [PLAIN_COLOR] + [FUSION_COLORS[fm] for fm in FUSION_MODES]
@@ -307,6 +317,8 @@ def _acc_lines(ax, series_defs, field, mark_stage=True, legend_loc="lower right"
 
 
 def plot_c_line_acc_all(data, methods, out_path, title_suffix=""):
+    """(c) Test/train accuracy vs. global epoch, Plain vs. pooled Weighted
+    (all fusion modes merged into one shaded band), averaged over `methods`."""
     plain_recs = [data[m]["plain"] for m in methods]
     weighted_recs = [data[m][fm] for m in methods for fm in FUSION_MODES if fm in data[m]]
     series = [("Plain", PLAIN_COLOR, plain_recs), ("Weighted", WEIGHTED_AVG, weighted_recs)]
@@ -323,6 +335,8 @@ def plot_c_line_acc_all(data, methods, out_path, title_suffix=""):
 
 
 def plot_d_line_acc_by_fusion(data, methods, out_path, title_suffix=""):
+    """(d) Same as (c) but with each fusion mode plotted as its own line
+    instead of being pooled into a single Weighted band."""
     plain_recs = [data[m]["plain"] for m in methods]
     series = [("Plain", PLAIN_COLOR, plain_recs)]
     for fm in FUSION_MODES:
@@ -341,6 +355,8 @@ def plot_d_line_acc_by_fusion(data, methods, out_path, title_suffix=""):
 
 
 def plot_e_line_loss_all(data, methods, out_path, title_suffix=""):
+    """(e) Training loss vs. global epoch, Plain vs. pooled Weighted — the
+    loss counterpart of (c). No test loss is available (see module docstring)."""
     plain_recs = [data[m]["plain"] for m in methods]
     weighted_recs = [data[m][fm] for m in methods for fm in FUSION_MODES if fm in data[m]]
 
@@ -359,6 +375,8 @@ def plot_e_line_loss_all(data, methods, out_path, title_suffix=""):
 
 
 def plot_f_line_loss_by_fusion(data, methods, out_path, title_suffix=""):
+    """(f) Training loss vs. global epoch, one line per fusion mode plus
+    Plain — the loss counterpart of (d)."""
     plain_recs = [data[m]["plain"] for m in methods]
     fig, ax = plt.subplots(figsize=(8, 5.5))
     for label, color, recs_list in [("Plain", PLAIN_COLOR, plain_recs)] + [
@@ -396,6 +414,8 @@ ALL_PLOT_FUNCS = [
 # ==========================================================================
 
 def plot_method_bar_accuracy(data, methods, out_path, title_suffix=""):
+    """One bar per uncertainty method (averaged over its 5 fusion-mode
+    classifiers), plus a single Plain reference bar spanning all methods."""
     methods = ordered_methods(methods)
     labels, means, errs, colors = [], [], [], []
     for m in methods:
@@ -423,6 +443,8 @@ def plot_method_bar_accuracy(data, methods, out_path, title_suffix=""):
 
 
 def plot_method_line_accuracy(data, methods, out_path, title_suffix=""):
+    """Test/train accuracy vs. epoch, one line per uncertainty method (each
+    averaged over its 5 fusion modes), plus a single Plain reference line."""
     methods = ordered_methods(methods)
     series = [(m, METHOD_COLORS[m], [data[m][fm] for fm in FUSION_MODES if fm in data[m]]) for m in methods]
     series.append(("Plain (reference)", PLAIN_COLOR, [data[m]["plain"] for m in methods]))
@@ -440,6 +462,8 @@ def plot_method_line_accuracy(data, methods, out_path, title_suffix=""):
 
 
 def plot_method_line_loss(data, methods, out_path, title_suffix=""):
+    """Training loss vs. epoch, one line per uncertainty method (averaged
+    over its 5 fusion modes), plus a single Plain reference line."""
     methods = ordered_methods(methods)
     fig, ax = plt.subplots(figsize=(8, 5.5))
     for m in methods:
@@ -540,16 +564,19 @@ METHOD_DISPLAY = {
 
 
 def _tex_method_label(m: str) -> str:
+    """LaTeX-safe row label for method key `m` (escapes stray underscores)."""
     return METHOD_DISPLAY.get(m, m.replace("_", r"\_"))
 
 
 def _col_header(c: str) -> str:
+    """LaTeX column header for a fusion-mode key, e.g. 'key_scale' -> 'Key Scale'."""
     if c in ("Plain", "Weighted Avg"):
         return c
     return c.replace("_", " ").title()
 
 
 def _fmt(v, decimals: int, suffix: str = "") -> str:
+    """Format a numeric table cell, rendering missing/NaN values as '--'."""
     if v is None or (isinstance(v, float) and np.isnan(v)):
         return "--"
     return f"{v:.{decimals}f}{suffix}"

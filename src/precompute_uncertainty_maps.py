@@ -146,6 +146,7 @@ def precompute_confidence_maps(
 
 
 def main() -> None:
+    """CLI entry point: parse arguments and call precompute_confidence_maps()."""
     parser = argparse.ArgumentParser(
         description='Pre-compute 2D confidence maps for an emotion dataset'
     )

@@ -1,3 +1,13 @@
+"""
+inference.py
+=============
+Thin orchestration layer over the four per-model wrappers (SMIRK, DECA, EMOCA,
+SHeaP).  UnifiedFaceRegressor loads whichever subset of models is requested,
+skipping any whose checkpoints are missing, and exposes a single call-site
+(`run_model` / `run_all_models`) used throughout the uncertainty pipeline —
+most notably by calculate_cross_method_disagreement in src/uncertainty.py.
+"""
+
 import numpy as np
 import os
 from wrappers.smirk_wrapper import SMIRKWrapper

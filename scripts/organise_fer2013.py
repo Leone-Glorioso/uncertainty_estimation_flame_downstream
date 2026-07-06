@@ -46,6 +46,8 @@ _IMG_EXTS = {'.jpg', '.jpeg', '.png'}
 
 
 def organise_split(src_split: Path, dst_split: Path, use_copy: bool) -> int:
+    """Copy or symlink one split (train/ or test/) into the renamed class layout.
+    Returns the number of images now present (copied plus already-existing)."""
     total = 0
     for cls_dir in sorted(src_split.iterdir()):
         if not cls_dir.is_dir():

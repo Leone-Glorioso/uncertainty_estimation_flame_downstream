@@ -47,6 +47,7 @@ from src.emotion_dataset import EmotionDataset
 
 @dataclass
 class ExperimentConfig:
+    """Bundles every knob needed to run one train+eval comparison (see main())."""
     data_root: str
     uncertainty_root: Optional[str] = None
     output_dir: str = './outputs/classifier'
@@ -68,6 +69,7 @@ def _build_loader(
     split: str,
     mode: str,
 ) -> DataLoader:
+    """Build the train/test DataLoader for one split and dataset `mode`."""
     dataset = EmotionDataset(
         root=config.data_root,
         split=split,
@@ -86,6 +88,7 @@ def _build_loader(
 
 
 def _build_model(config: ExperimentConfig) -> UncertaintyWeightedClassifier:
+    """Instantiate the CNN classifier with the fusion mode from `config`."""
     return UncertaintyWeightedClassifier(
         num_classes=config.num_classes,
         architecture_type='CNN',
@@ -101,6 +104,7 @@ def train_one_epoch(
     optimizer: torch.optim.Optimizer,
     device: str,
 ) -> float:
+    """Run one training epoch; returns the mean per-sample cross-entropy loss."""
     model.train()
     criterion = nn.CrossEntropyLoss()
     total_loss = 0.0
@@ -121,6 +125,7 @@ def evaluate(
     loader: DataLoader,
     device: str,
 ) -> Dict:
+    """Evaluate `model` on `loader`; returns overall and per-class accuracy."""
     model.eval()
     correct = 0
     total   = 0
@@ -185,6 +190,7 @@ def _train_mode(config: ExperimentConfig, mode: str) -> Dict:
 
 
 def _print_comparison(results: Dict[str, Dict]) -> None:
+    """Print the plain-vs-uncertainty-weighted accuracy delta, overall and per-class."""
     if 'plain' not in results or 'uncertainty_weighted' not in results:
         return
     base  = results['plain']['best_accuracy']
@@ -206,6 +212,7 @@ def _print_comparison(results: Dict[str, Dict]) -> None:
 
 
 def _save_csv(results: Dict[str, Dict], output_dir: str) -> None:
+    """Write one row per mode (best accuracy + per-class accuracy) to results.csv."""
     csv_path = os.path.join(output_dir, 'results.csv')
     rows = []
     for mode, m in results.items():
