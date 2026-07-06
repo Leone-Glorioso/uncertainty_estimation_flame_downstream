@@ -1,0 +1,58 @@
+# Environments
+.env
+.venv
+env/
+venv/
+
+# Data and Models (CRITICAL: Ignore large files)
+data/
+models/**/*.pth
+models/**/*.pt
+models/**/*.ckpt
+*.npy
+*.obj
+datasets
+outputs
+
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Jupyter Notebook Checkpoints
+.ipynb_checkpoints/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# IDE configurations
+.idea/
+.vscode/
+S
+partitions
+
+# Extra files
+CLAUDE.md
+.claude
+papers
+smirk_checkpoint_data
+
+# Internal/working docs (moved to docs/)
+docs/NEXT_SESSION_PROMPT.md
+docs/PIPELINE_EXPLANATION.md
+docs/PROJECT_DESCRIPTION.md
+docs/NOW_SETUP.md
+docs/TEMPEH_SETUP.md
+docs/TOMORROW_SETUP.md
+docs/REFERENCES.md
+
+papers_all
+*.slurm
+logs
+*.tar.gz
+figures
+
+fer2013*
+fer2013.zip
+# Public guides in docs/ are tracked (MODEL_GUIDE, DATASET_GUIDE, RUN_GUIDE)
