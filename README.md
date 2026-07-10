@@ -27,7 +27,7 @@ Monocular 3D face reconstruction is inherently ill-posed, and current FLAME-base
 - **Epistemic uncertainty** — Monte Carlo Dropout (MCD) and two variance-reduction variants, SOL-MCD and Antithetic MCD (A-MCD).
 - **Methodological uncertainty** — Cross-Method Disagreement among the four independently trained regressors.
 
-All seven methods (plus a non-adaptive `StaticRegion` sanity-check baseline) are evaluated against ground-truth per-vertex reconstruction error on TEMPEH and CoMA, using rank correlation (Spearman ρ), error-ranking quality (AUSE), and probabilistic calibration (NLL, ECE). The estimated uncertainty is then projected into image space and injected into a Vision Transformer at five different points, to test whether it is a useful signal for downstream facial expression recognition on Fer2013.
+All seven methods (plus a non-adaptive `StaticRegion` sanity-check baseline) are evaluated against ground-truth per-vertex reconstruction error on TEMPEH, using rank correlation (Spearman ρ), error-ranking quality (AUSE), and probabilistic calibration (temperature-scaled NLL and ECE); the geometric reconstruction accuracy of the four regressors is additionally assessed on NoW via a scan-to-mesh comparison. The estimated uncertainty is then projected into image space and injected into a Vision Transformer at five different points, to test whether it is a useful signal for downstream facial expression recognition on Fer2013.
 
 ### Team
 
@@ -142,7 +142,6 @@ All seven methods reduce to a scalar per vertex, $\mathbf{u} \in \mathbb{R}^{502
 |---|---|---|---|
 | NoW | Raw 3D scans | 2,054 images | Scan-to-mesh (S2M) geometric evaluation |
 | TEMPEH | FLAME registrations | 500 images | Per-vertex L2 evaluation (primary benchmark) |
-| CoMA | FLAME meshes | 20K+ images | Out-of-distribution stress test for Mahalanobis |
 | UTKFace | None | 23K+ images | Qualitative uncertainty maps, demographic coverage |
 | LFW | None | 13K+ images | Qualitative uncertainty maps, lighting/pose generalisation |
 | Fer2013 | 7-class emotion labels | 35K+ images | Downstream classification stage |
@@ -151,14 +150,14 @@ All seven methods reduce to a scalar per vertex, $\mathbf{u} \in \mathbb{R}^{502
 
 ### Downstream: Uncertainty-Weighted Expression Classification
 
-Per-vertex uncertainty (computed once with SMIRK + TTA and cached) is splatted onto the image plane via a weak-perspective projection, Gaussian-smoothed, and min–max normalised into a dense confidence map $\mathbf{U}_{2D}\in\mathbb{R}^{H\times W}$. This map is injected into a Vision Transformer classifier (`src/downstream.py`) at one of five points:
+Per-vertex uncertainty (computed once per image on SMIRK, for each of the six uncertainty methods, and cached) is splatted onto the image plane via a weak-perspective projection, Gaussian-smoothed, and min–max normalised into a dense confidence map $\mathbf{U}_{2D}\in\mathbb{R}^{H\times W}$. This map is injected into a Vision Transformer classifier (`src/downstream.py`) at one of five points:
 
 - **Input** — multiplicative pixel mask, $\tilde{\mathbf{x}} = \mathbf{x}\odot(1-\alpha\,\mathbf{U}_{2D})$.
 - **Patch Embed** — scales patch-embedding tokens by $1-\alpha U_j$ before the positional embedding.
 - **Key Scale / Value Scale** — scales key/value projections in every self-attention layer.
 - **Attn Bias** — subtracts $\alpha U_j$ from pre-softmax attention logits.
 
-Each uncertainty method is compared against a **Plain** baseline (no uncertainty signal) under identical hyperparameters, training a 7-class head (768→128→7 MLP) on top of a ViT-B/32 backbone (frozen on CPU / partially fine-tuned on GPU), reporting top-1 accuracy and macro-F1. The codebase additionally implements a GCN path (`UncertaintyWeightedClassifier(architecture_type='GCN')`) that appends uncertainty as a 4th per-vertex node feature, as an alternative to the image-space ViT injection used in the reported experiments.
+Each uncertainty method is compared against a **Plain** baseline (no uncertainty signal) under identical hyperparameters, training a 7-class head (768→128→7 MLP) on top of a ViT-B/32 backbone (frozen on CPU / partially fine-tuned on GPU), reporting 7-class top-1 accuracy. The codebase additionally implements a GCN path (`UncertaintyWeightedClassifier(architecture_type='GCN')`) that appends uncertainty as a 4th per-vertex node feature, as an alternative to the image-space ViT injection used in the reported experiments.
 
 ---
 
@@ -204,7 +203,7 @@ Sparsification behaviour tells the same story — CrossMethod tracks the oracle 
 | CrossMethod | 0.428 | 3.215 | 1.003 |
 | StaticRegion | **0.205** | 3.016 | 0.806 |
 
-Every method is **under-confident** at every tested level (empirical coverage never reaches the nominal level, even at $\alpha=0.5$); CrossMethod — despite being the best rank-predictor — is the *most* under-confident of all seven (coverage ≈ 0.13 at $\alpha=0.5$):
+Every method is **over-confident** at every tested level (empirical coverage never reaches the nominal level, even at $\alpha=0.5$); CrossMethod — despite being the best rank-predictor — is the *most* over-confident of all seven (coverage ≈ 0.13 at $\alpha=0.5$):
 
 ![Calibration reliability diagram and ECE](plots/calibration_diagram.png)
 
@@ -235,7 +234,7 @@ Best test accuracy (%) by uncertainty method and fusion mode:
 | SOL-MCD | **60.9** | 58.0 | 58.7 | 59.0 | 59.5 | 58.2 | 58.7 |
 | A-MCD | **60.5** | 59.0 | 59.0 | 58.4 | 59.1 | 58.7 | 58.8 |
 
-Across all 30 method × fusion-mode combinations tested, the **Plain** baseline (average ≈ 61.2%) consistently outperforms every uncertainty-guided variant (pooled weighted average ≈ 58.9%), and every method's own best fusion mode still loses to that same method's own Plain run:
+Across all 30 method × fusion-mode combinations tested, the **Plain** baseline (average ≈ 61.1%) consistently outperforms every uncertainty-guided variant — the single best weighted result anywhere is 60.3% (TTA × Patch Embed), and the pooled weighted average across all six methods is ≈ 58.9% — and every method's own best fusion mode still loses to that same method's own Plain run:
 
 <img src="plots/test_accuracy_per_classifier.png" alt="Test accuracy per epoch, by fusion mode" width="420"> <img src="plots/test_accuracy_per_method.png" alt="Test accuracy per epoch, by uncertainty method" width="420">
 
@@ -248,10 +247,10 @@ Across all 30 method × fusion-mode combinations tested, the **Plain** baseline 
 1. **CrossMethod disagreement is the single most reliable uncertainty signal** for per-vertex reconstruction error ($\rho_{\mathrm{flat}}=0.721$, AUSE $=0.289$), but is simultaneously among the *worst*-calibrated methods by ECE — good ranking and good calibration are not the same property, and no method excels at both in this benchmark.
 2. **Mahalanobis distance is usable for ordering vertices, not for a trusted confidence value** — decent Spearman ρ (0.557) alongside by far the worst NLL (9.499).
 3. **The three MC-Dropout variants (MCD, SOL-MCD, A-MCD) are essentially one weak result reported three times** ($\rho \approx 0.42$–$0.45$, mutually redundant at $\rho\approx0.89$–$0.90$), since they share the same retrained SMIRK checkpoint.
-4. **Uncertainty-guided attention did not improve downstream Fer2013 accuracy** in any of the 30 method × fusion-mode combinations evaluated on this reduced-scale experimental setup — a negative result that runs counter to the improvement hypothesis, and one of the concrete limitations discussed in `main.tex` §V.
-5. **SMIRK — the backbone behind every single-model estimator — is the least geometrically accurate of the four regressors on TEMPEH** (median error 7.18 mm), plausibly a domain-shift effect (TEMPEH is captured in near-infrared; SMIRK is trained on RGB imagery).
+4. **Uncertainty-guided attention did not improve downstream Fer2013 accuracy** in any of the 30 method × fusion-mode combinations evaluated on this reduced-scale experimental setup — a negative result that runs counter to the improvement hypothesis, and one of the concrete limitations discussed in `main.tex` §IV.
+5. **SMIRK — the backbone behind every single-model estimator — is *not* the geometric weak link.** Under a scan-to-mesh comparison on NoW it ranks *strongest* of the four regressors (lowest median distance, ahead of SHeaP, EMOCA, and DECA), so the predictiveness and calibration trends above are not an artifact of a weaker shared backbone. This is reported as a *relative* ranking only — the scan-to-mesh evaluation uses a simplified alignment and does not reproduce NoW's official landmark-based protocol, so absolute magnitudes are not directly comparable to published NoW scores.
 
-See `main.tex` §V (*Discussion, Limitations, Future Work*) for the full discussion, including the compute-budget constraints on the downstream experiments and the single-backbone limitation of the epistemic-uncertainty axis.
+See `main.tex` §IV (*Discussion, Limitations, Future Work*) for the full discussion, including the compute-budget constraints on the downstream experiments and the single-backbone limitation of the epistemic-uncertainty axis.
 
 ---
 
