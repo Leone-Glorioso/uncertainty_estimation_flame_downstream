@@ -43,7 +43,7 @@ All seven methods (plus a non-adaptive `StaticRegion` sanity-check baseline) are
 
 ---
 
-## b) File Organisation
+## b)  File Organisation
 
 ```
 .
