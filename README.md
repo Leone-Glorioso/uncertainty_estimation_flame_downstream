@@ -3,7 +3,7 @@
 **A Comparative Benchmark of Aleatoric, Epistemic, and Cross-Method Approaches, with a Downstream Facial Expression Recognition Study**
 
 Course project for **Computer Vision**, MSc in Data Science and Machine Learning, National Technical University of Athens (NTUA).
-
+ 
 ---
 
 ## Table of Contents
